@@ -2,31 +2,19 @@ import time
 
 class Timer:
     def __init__(self):
-        self.start = None
+        self.start_time = []
+        self.end_time = []
         self.indent = 0
-        self.end = None
-
-    def __enter__(self):
-        return self
-
-    def __str__(self):
-        return str(self.interval)
-
-    def __float__(self):
-        return self.interval
-
-    def __int__(self):
-        return int(self.interval)
-
-    def __repr__(self):
-        return f"{self.interval:.2f} seconds"
 
     def start(self):
-        self.start = time.perf_counter()
-    
-    def stop(self):
-        self.end = time.perf_counter()
-    def print(self):
-        if (self.start is None) or (self.end is None) or (self.end < self.start):
-            raise ValueError("Timer not started or stopped")
-        print(f"{' ' * self.indent}Execution time: {self.interval:.2f} seconds")
+        self.start_time.append(time.time())
+        self.indent += 1
+
+    def end(self, message):
+        self.end_time.append(time.time())
+        if (len(self.start_time) < len(self.end_time)):
+            print("Error: Timer not started")
+            return
+        print("  " * self.indent, end="")
+        self.indent -= 1
+        print("\033[93m"f"{message}: {self.end_time.pop() - self.start_time.pop()} seconds" + "\033[0m")
