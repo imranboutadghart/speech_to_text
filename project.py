@@ -6,8 +6,6 @@ import whisper
 from IPython import display as disp
 import torch
 import torchaudio
-from denoiser import pretrained
-from denoiser.dsp import convert_audio
 from pyannote.audio import Inference
 import torch
 import librosa
@@ -15,11 +13,13 @@ from sklearn.cluster import KMeans
 import numpy as np
 from pyannote.audio.pipelines import SpeakerDiarization
 import soundfile as sf
+from my_utils import denoise, make_dirs
 
+auth_token = ""
 
 def transcribe_with_external_translation(audio_path, out_lang="en", model_name='base'):
     # Load the Whisper model
-    print("loading model" + model_name)
+    print("loading whisper model" + model_name)
     model = whisper.load_model(model_name)
 
     # Load and preprocess the audio
@@ -45,18 +45,6 @@ def transcribe_with_external_translation(audio_path, out_lang="en", model_name='
 
     return original_text, translated_text
 
-def denoise(input_file, output_file):
-    # outputs denoised file
-    model = pretrained.dns64().cuda()
-    wav, sr = torchaudio.load(input_file)
-    wav = convert_audio(wav.cuda(), sr, model.sample_rate, model.chin)
-    with torch.no_grad():
-        denoised = model(wav[None])[0]
-    # save audio after displaying
-    denoised_cpu = denoised.cpu()
-    torchaudio.save(output_file, denoised_cpu, model.sample_rate)
-    return output_file
-
 from pyannote.audio import Inference
 import torch
 import librosa
@@ -66,6 +54,7 @@ from pyannote.audio.pipelines import SpeakerDiarization
 import soundfile as sf
 
 def load_models(auth_token):
+    print("Loading models speaker embedding + diarization")
     speaker_embedding_model = Inference("pyannote/embedding", use_auth_token=auth_token)
     diarization_pipeline = SpeakerDiarization.from_pretrained(
         "pyannote/speaker-diarization", use_auth_token=auth_token
@@ -115,7 +104,6 @@ def identify_professor_segments(embeddings, segments, kmeans, audio_file, profes
         embedding_tensor = embedding_tensor.reshape(1, -1)
         cluster_label = kmeans.predict(embedding_tensor)[0]
         if cluster_label == 0:  # Ajustez ce numéro de cluster
-            print(f"Segment {i+1}: Locuteur identifié comme le professeur.")
             start_time, end_time = segments[i]
             audio_segment, sr = librosa.load(audio_file, sr=16000, offset=start_time, duration=end_time - start_time)
             segments_professor.append(audio_segment)
@@ -126,27 +114,21 @@ def save_combined_audio(segments_professor, output_path):
     if segments_professor:
         combined_audio = np.concatenate(segments_professor, axis=0)
         sf.write(output_path, combined_audio, 16000)
-        print("L'audio du professeur a été sauvegardé avec succès.")
+        print("prof audio have been successfully saved.")
     else:
-        print("Aucun segment du professeur trouvé.")
+        print("prof segments not found.")
 
 def main():
     if (len(sys.argv) < 2):
         print("program needs an audio argument")
         return
     print("Processing audio file: " + sys.argv[1])
+    make_dirs()
     embedding_dir = "embeddings/"
     tmp_dir = "tmp/"
     output_dir = "output/"
-    if  not os.path.exists(embedding_dir):
-        os.makedirs(embedding_dir)
-    if  not os.path.exists(tmp_dir):
-        os.makedirs(tmp_dir)
-    if  not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    auth_token = ""
     speaker_embedding_model, diarization_pipeline = load_models(auth_token)
-    audio_file = denoise(sys.argv[1], tmp_dir + sys.argv[1] + "_denoised.wav")
+    audio_file = denoise(sys.argv[1], tmp_dir + os.path.basename(sys.argv[1]) + "_denoised.wav")
     diarization = perform_diarization(diarization_pipeline, audio_file)
     num_speakers = count_speakers(diarization)
     embeddings, segments = extract_embeddings(diarization, audio_file, speaker_embedding_model)
@@ -156,6 +138,7 @@ def main():
     i = 0
     if (len(saved_embeddings) == 0):
         print("Error: No embeddings found")
+        print("Please run the following command to generate embeddings: python add_embedding.py")
         return
     for embedding in saved_embeddings:
         professor_embedding = torch.load(embedding)
@@ -166,10 +149,10 @@ def main():
         segments_professor = identify_professor_segments(
             embeddings, segments, kmeans, audio_file, professor_embedding_tensor
         )
-        combined_output = tmp_dir + sys.argv[1] + "_combined" + str(i) + ".wav"
+        combined_output = tmp_dir + os.path.basename(sys.argv[1]) + "_combined" + str(i) + ".wav"
         save_combined_audio(segments_professor, combined_output)
         original, translated = transcribe_with_external_translation(combined_output)
-        tmp = combined_output.split("/")[-1]
+        tmp = os.path.basename(combined_output)
         f = open(output_dir + tmp + "translated.txt", "w")
         f.write(translated)
         f.close()
