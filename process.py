@@ -4,7 +4,6 @@ import sys
 from googletrans import Translator
 import whisper
 from IPython import display as disp
-import torch
 import torchaudio
 from pyannote.audio import Inference
 import torch
@@ -13,11 +12,16 @@ from sklearn.cluster import KMeans
 import numpy as np
 from pyannote.audio.pipelines import SpeakerDiarization
 import soundfile as sf
+import json
 from my_utils import denoise, make_dirs
 
+config = json.load(open("config.json"))
 auth_token = ""
+enable_diarization=config["enable_diarization"]
+enable_translation=config["enable_translation"]
+language=config["language"]
 
-def transcribe_with_external_translation(audio_path, out_lang="en", model_name='base'):
+def transcribe_with_external_translation(audio_path, out_lang=language, model_name='base'):
     # Load the Whisper model
     print("loading whisper model" + model_name)
     model = whisper.load_model(model_name)
@@ -39,19 +43,14 @@ def transcribe_with_external_translation(audio_path, out_lang="en", model_name='
     print("Original text:", original_text)
 
     # Step 2: Translate the original text to the target language using Google Translate
-    translator = Translator()
-    translated_text = translator.translate(original_text, dest=out_lang).text
+    if (enable_translation):
+        translator = Translator()
+        translated_text = translator.translate(original_text, dest=out_lang).text
+    else:
+        translated_text = original_text
     print(f"Translated text ({out_lang}):", translated_text)
 
     return original_text, translated_text
-
-from pyannote.audio import Inference
-import torch
-import librosa
-from sklearn.cluster import KMeans
-import numpy as np
-from pyannote.audio.pipelines import SpeakerDiarization
-import soundfile as sf
 
 def load_models(auth_token):
     print("Loading models speaker embedding + diarization")
@@ -118,17 +117,11 @@ def save_combined_audio(segments_professor, output_path):
     else:
         print("prof segments not found.")
 
-def main():
-    if (len(sys.argv) < 2):
-        print("program needs an audio argument")
-        return
-    print("Processing audio file: " + sys.argv[1])
-    make_dirs()
+def process_with_diariation(audio_file, auth_token):
     embedding_dir = "embeddings/"
-    tmp_dir = "tmp/"
     output_dir = "output/"
+    tmp_dir = "tmp/"
     speaker_embedding_model, diarization_pipeline = load_models(auth_token)
-    audio_file = denoise(sys.argv[1], tmp_dir + os.path.basename(sys.argv[1]) + "_denoised.wav")
     diarization = perform_diarization(diarization_pipeline, audio_file)
     num_speakers = count_speakers(diarization)
     embeddings, segments = extract_embeddings(diarization, audio_file, speaker_embedding_model)
@@ -157,6 +150,31 @@ def main():
         f.write(translated)
         f.close()
         i = i + 1
+    return
+
+def process_without_diariation(audio_file):
+    output_dir = "output/"
+    original, translated = transcribe_with_external_translation(audio_file)
+    tmp = os.path.basename(audio_file)
+    f = open(output_dir + tmp + "translated.txt", "w")
+    f.write(translated)
+    f.close()
+    return
+
+def main():
+    if (len(sys.argv) < 2):
+        print("program needs an audio argument")
+        return
+    print("Processing audio file: " + sys.argv[1])
+    make_dirs()
+    embedding_dir = "embeddings/"
+    tmp_dir = "tmp/"
+    output_dir = "output/"
+    audio_file = denoise(sys.argv[1], tmp_dir + os.path.basename(sys.argv[1]) + "_denoised.wav")
+    if (enable_diarization):
+        process_with_diariation(audio_file)
+    else:
+        process_without_diariation(audio_file)
     return
 
 if __name__ == "__main__":

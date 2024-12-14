@@ -1,0 +1,5 @@
+{
+	"enable_diarization" : false,
+	"enable_translation" : true,
+	"language" : "en"
+}

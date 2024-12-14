@@ -17,4 +17,4 @@ class Timer:
             return
         print("  " * self.indent, end="")
         self.indent -= 1
-        print("\033[93m"f"{message}: {self.end_time.pop() - self.start_time.pop()} seconds" + "\033[0m")
+        print("\033[93m"f"{message}: {self.end_time.pop() - self.start_time.pop()} seconds" + "\033[0m", flush=True)

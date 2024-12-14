@@ -23,4 +23,4 @@ def save_audio():
     return output_path
 if __name__ == "__main__":
     output_path = save_audio()
-    subprocess.run(["./project.py", output_path])
+    # subprocess.run(["./project.py", output_path])
