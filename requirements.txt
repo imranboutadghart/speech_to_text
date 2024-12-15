@@ -1,0 +1,14 @@
+denoiser==0.1.5
+Flask==3.1.0
+googletrans==3.0.0
+ipython==8.12.3
+librosa==0.10.2.post1
+numpy==2.2.0
+scikit_learn==1.6.0
+scipy==1.14.1
+sounddevice==0.5.1
+soundfile==0.12.1
+torch==2.5.1
+torchaudio==2.5.1
+wavio==0.0.9
+whisper==1.1.10
