@@ -1,5 +1,6 @@
 {
 	"enable_diarization" : false,
 	"enable_translation" : true,
+	"enable_denoise" : true,
 	"language" : "en"
 }

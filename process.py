@@ -20,6 +20,7 @@ auth_token = ""
 enable_diarization=config["enable_diarization"]
 enable_translation=config["enable_translation"]
 language=config["language"]
+keep_tmp = True
 
 def transcribe_with_external_translation(audio_path, out_lang=language, model_name='base'):
     # Load the Whisper model
@@ -172,9 +173,17 @@ def main():
     output_dir = "output/"
     audio_file = denoise(sys.argv[1], tmp_dir + os.path.basename(sys.argv[1]) + "_denoised.wav")
     if (enable_diarization):
-        process_with_diariation(audio_file)
+        process_with_diariation(audio_file, auth_token)
     else:
         process_without_diariation(audio_file)
+    if (not keep_tmp):
+        for filename in os.listdir(tmp_dir):
+            file_path = os.path.join(tmp_dir, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+            except:
+                pass
     return
 
 if __name__ == "__main__":

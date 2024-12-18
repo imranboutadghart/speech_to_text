@@ -5,9 +5,15 @@ import torch
 import torchaudio
 from denoiser import pretrained
 from denoiser.dsp import convert_audio
+import json
+
+config = json.load(open("config.json"))
 
 def denoise(input_file, output_file):
     # outputs denoised file
+    if (config["enable_denoise"] == False):
+        print("Denoising is disabled")
+        return input_file
     print("denoising " + input_file)
     model = pretrained.dns64().cuda()
     wav, sr = torchaudio.load(input_file)
