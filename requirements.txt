@@ -1,5 +1,6 @@
 denoiser==0.1.5
 Flask==3.1.0
+flask_cors==5.0.0
 googletrans==3.0.0
 ipython==8.12.3
 librosa==0.10.2.post1

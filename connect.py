@@ -3,6 +3,10 @@ from flask import Flask, request
 from flask_cors import CORS
 import subprocess
 import os
+import json
+
+with open('config.json') as infile:
+    data = json.load(infile)
 
 UPLOAD_FOLDER = "uploaded/"  # Define the directory for uploads
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # Ensure the directory exists
@@ -25,6 +29,10 @@ def upload_file():
     script_name = "no_script.py"
     if 'script' in request.form and request.form['script'] in ['add_embedding', 'process']:
         script_name = request.form['script'] + '.py'
+    if 'language' in request.form:
+        data['language'] = request.form['language']
+        with open('config.json', 'w') as outfile:
+            json.dump(data, outfile)
     print("Running script: " + script_name + " with file: " + filepath, flush=True)
     result = subprocess.run(['python3', script_name, filepath], capture_output=True, text=True)
     try:
